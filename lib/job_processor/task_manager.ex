@@ -1,7 +1,4 @@
-defmodule MyTask do
-  @enforce_keys [:name, :command]
-  defstruct [:name, :command, :unfinished_parents]
-end
+alias JobProcessor.MyTask, as: MyTask
 
 defmodule JobProcessor.TaskManager do
   def start_link do
@@ -15,13 +12,13 @@ defmodule JobProcessor.TaskManager do
         loop(pid_map, dep_map)
 
       {:put, pid, value} ->
-        task = new_task(value)
+        task = MyTask.new(value)
         new_dep_map = update_dep_map(dep_map, task.name, task.unfinished_parents)
         loop(Map.put(pid_map, task.name, pid), new_dep_map)
 
-      {:task_finished, task} ->
-        finished_task = new_task(value)
-        notify_children(finished_task, dep_map)
+      {:task_finished, value} ->
+        finished_task = MyTask.new(value)
+        notify_children(pid_map, finished_task, dep_map[finished_task.name])
         loop(pid_map, dep_map)
 
       {:get_all_deps} ->
@@ -46,13 +43,11 @@ defmodule JobProcessor.TaskManager do
     update_dep_map(new_dep_map, child_name, tail)
   end
 
-  defp notify_children(task, dep_map) do
-    children = dep_map[task]
-    # todo - send to all children..
-  end
+  defp notify_children(_pid_map, _task, []), do: :ok
 
-  defp new_task(task) do
-    unfinished_parents = if task["requires"] == nil, do: [], else: task["requires"]
-    %MyTask{name: task["name"], command: task["command"], unfinished_parents: unfinished_parents}
+  defp notify_children(pid_map, task, [head | tail]) do
+    child_pid = pid_map[head]
+    send(child_pid, {:parent_finished, task.name})
+    notify_children(pid_map, task, tail)
   end
 end
