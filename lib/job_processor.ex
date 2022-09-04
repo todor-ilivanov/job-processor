@@ -6,6 +6,8 @@ defmodule JobProcessor do
   def process(tasks) do
     {:ok, manager_pid} = TaskManager.start_link()
     create_tasks(manager_pid, tasks)
+    send(manager_pid, {:get_all_deps})
+    send(manager_pid, {:get_all_tasks})
     tasks |> Enum.map(fn task -> %{name: task["name"], command: task["command"]} end)
   end
 
@@ -18,7 +20,7 @@ defmodule JobProcessor do
     create_tasks(manager_pid, tail)
   end
 
-  def do_task(task) do
-    IO.inspect(task["name"])
+  def do_task(_task) do
+    # todo receive...
   end
 end
