@@ -23,6 +23,15 @@ defmodule JobProcessor.Router do
     send_resp(conn, 200, Jason.encode!(processed))
   end
 
+  post "/process-short" do
+    processed =
+      JobProcessor.process(conn.body_params["tasks"])
+      |> Enum.map(fn task -> task.command end)
+      |> Enum.join(" && ")
+
+    send_resp(conn, 200, Jason.encode!(processed))
+  end
+
   match _ do
     send_resp(conn, 404, "Not Found")
   end

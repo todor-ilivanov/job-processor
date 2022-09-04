@@ -1,8 +1,7 @@
 alias JobProcessor.TaskManager, as: TaskManager
 
 defmodule JobProcessor do
-
-  def process(nil), do: raise "No tasks provided."
+  def process(nil), do: raise("No tasks provided.")
 
   @type task :: %{command: String.t(), name: String.t(), requires: list(String.t())}
   @spec process(%{tasks: [task()]}) :: list
