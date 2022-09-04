@@ -1,5 +1,3 @@
-alias JobProcessor.MyTask, as: MyTask
-
 defmodule JobProcessor.TaskManager do
   def start_link do
     Task.start_link(fn -> loop(%{}, %{}) end)
@@ -7,26 +5,16 @@ defmodule JobProcessor.TaskManager do
 
   defp loop(pid_map, dep_map) do
     receive do
-      {:get, pid, caller} ->
-        send(caller, Map.get(pid_map, pid))
-        loop(pid_map, dep_map)
-
-      {:put, pid, value} ->
-        task = MyTask.new(value)
+      {:put, pid, task} ->
         new_dep_map = update_dep_map(dep_map, task.name, task.unfinished_parents)
         loop(Map.put(pid_map, task.name, pid), new_dep_map)
 
-      {:task_finished, value} ->
-        finished_task = MyTask.new(value)
+      {:task_finished, finished_task} ->
         notify_children(pid_map, finished_task, dep_map[finished_task.name])
         loop(pid_map, dep_map)
 
-      {:get_all_deps} ->
-        IO.inspect(dep_map)
-        loop(pid_map, dep_map)
-
-      {:get_all_tasks} ->
-        IO.inspect(pid_map)
+      {:init_complete} ->
+        for pid <- Map.values(pid_map), do: send(pid, {:execute})
         loop(pid_map, dep_map)
     end
   end
@@ -43,6 +31,7 @@ defmodule JobProcessor.TaskManager do
     update_dep_map(new_dep_map, child_name, tail)
   end
 
+  defp notify_children(_pid_map, _task, nil), do: :ok
   defp notify_children(_pid_map, _task, []), do: :ok
 
   defp notify_children(pid_map, task, [head | tail]) do

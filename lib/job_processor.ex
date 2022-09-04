@@ -7,16 +7,15 @@ defmodule JobProcessor do
   def process(tasks) do
     {:ok, manager_pid} = TaskManager.start_link()
     create_tasks(manager_pid, tasks)
-    send(manager_pid, {:get_all_deps})
-    send(manager_pid, {:get_all_tasks})
+
+    # todo - return proper result
     tasks |> Enum.map(fn task -> %{name: task["name"], command: task["command"]} end)
   end
 
-  def create_tasks(_manager_pid, []), do: :ok
+  def create_tasks(manager_pid, []), do: send(manager_pid, {:init_complete})
 
   def create_tasks(manager_pid, [head | tail]) do
-    task_pid = spawn(fn -> MyTask.execute(head) end)
-    send(manager_pid, {:put, task_pid, head})
+    MyTask.new(manager_pid, head)
     create_tasks(manager_pid, tail)
   end
 end
