@@ -1,5 +1,6 @@
 defmodule JobProcessor.Router do
   use Plug.Router
+  use Plug.ErrorHandler
 
   plug(Plug.Logger)
 
@@ -18,17 +19,16 @@ defmodule JobProcessor.Router do
   end
 
   post "/process" do
-    try do
-      processed = JobProcessor.process(conn.body_params["tasks"])
-      send_resp(conn, 200, Jason.encode!(processed))
-    rescue
-      e in _ ->
-        IO.inspect(e)
-        send_resp(conn, 400, "Bad request")
-    end
+    processed = JobProcessor.process(conn.body_params["tasks"])
+    send_resp(conn, 200, Jason.encode!(processed))
   end
 
   match _ do
     send_resp(conn, 404, "Not Found")
+  end
+
+  @impl Plug.ErrorHandler
+  def handle_errors(conn, %{kind: _kind, reason: _reason, stack: _stack}) do
+    send_resp(conn, conn.status, "Something went wrong")
   end
 end

@@ -12,10 +12,6 @@ defmodule JobProcessorTest.Router do
     assert conn.resp_body == "OK"
   end
 
-  test "/process returns empty list when no request body is provided" do
-    assert_process_endpoint_successful()
-  end
-
   test "/process returns multiple correctly processed jobs in order with no dependencies" do
     req_body = %{
       "tasks" => [
@@ -66,14 +62,23 @@ defmodule JobProcessorTest.Router do
     assert_process_endpoint_successful(req_body, expected_resp)
   end
 
-  test "/process returns error on malformed request" do
-    conn = conn(:post, "/process", %{dogs: ["small", "medium", "large"]})
-    conn = JobProcessor.Router.call(conn, @opts)
-    assert conn.state == :sent
-    assert conn.status == 400
+  test "/process returns error on missing body" do
+    conn = conn(:post, "/process")
+
+    assert_raise Plug.Conn.WrapperError, "** (RuntimeError) No tasks provided.", fn ->
+      conn = JobProcessor.Router.call(conn, @opts)
+    end
   end
 
-  defp assert_process_endpoint_successful(req_body \\ %{}, expected_resp \\ []) do
+  test "/process returns error on malformed request" do
+    conn = conn(:post, "/process", %{dogs: ["small", "medium", "large"]})
+
+    assert_raise Plug.Conn.WrapperError, "** (RuntimeError) No tasks provided.", fn ->
+      conn = JobProcessor.Router.call(conn, @opts)
+    end
+  end
+
+  defp assert_process_endpoint_successful(req_body, expected_resp) do
     conn = conn(:post, "/process", req_body)
     conn = JobProcessor.Router.call(conn, @opts)
     assert conn.state == :sent
