@@ -1,3 +1,5 @@
+alias JobProcessor.MyTask, as: MyTask
+
 defmodule JobProcessor.TaskManager do
   def start_link do
     Task.start_link(fn -> loop(%{}, %{}) end)
@@ -5,6 +7,10 @@ defmodule JobProcessor.TaskManager do
 
   defp loop(pid_map, dep_map) do
     receive do
+      {:create_tasks, input_tasks} ->
+        create_tasks(input_tasks)
+        loop(pid_map, dep_map)
+
       {:put, pid, task} ->
         new_dep_map = update_dep_map(dep_map, task.name, task.unfinished_parents)
         loop(Map.put(pid_map, task.name, pid), new_dep_map)
@@ -17,6 +23,13 @@ defmodule JobProcessor.TaskManager do
         for pid <- Map.values(pid_map), do: send(pid, {:execute})
         loop(pid_map, dep_map)
     end
+  end
+
+  defp create_tasks([]), do: send(self(), {:init_complete})
+
+  defp create_tasks([head | tail]) do
+    MyTask.new(self(), head)
+    create_tasks(tail)
   end
 
   defp update_dep_map(dep_map, _child_name, nil), do: dep_map
