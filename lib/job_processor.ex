@@ -4,10 +4,9 @@ defmodule JobProcessor do
   @type task :: %{command: String.t(), name: String.t(), requires: list(String.t())}
   @spec process(%{tasks: [task()]}) :: list
   def process(tasks) do
-    {:ok, manager_pid} = TaskManager.start_link()
-    send(manager_pid, {:create_tasks, tasks})
-
-    # todo - return proper result
-    tasks |> Enum.map(fn task -> %{name: task["name"], command: task["command"]} end)
+    task_manager = TaskManager.async()
+    send(task_manager.pid, {:create_tasks, tasks})
+    {:ok, ordered_tasks} = Task.await(task_manager)
+    ordered_tasks |> Enum.map(fn task -> %{name: task.name, command: task.command} end)
   end
 end

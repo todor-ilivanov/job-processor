@@ -1,27 +1,33 @@
 alias JobProcessor.MyTask, as: MyTask
 
 defmodule JobProcessor.TaskManager do
-  def start_link do
-    Task.start_link(fn -> loop(%{}, %{}) end)
+  def async do
+    Task.async(fn -> loop(%{}, %{}, []) end)
   end
 
-  defp loop(pid_map, dep_map) do
+  defp loop(pid_map, dep_map, finished_tasks) do
     receive do
       {:create_tasks, input_tasks} ->
         create_tasks(input_tasks)
-        loop(pid_map, dep_map)
-
-      {:put, pid, task} ->
-        new_dep_map = update_dep_map(dep_map, task.name, task.unfinished_parents)
-        loop(Map.put(pid_map, task.name, pid), new_dep_map)
-
-      {:task_finished, finished_task} ->
-        notify_children(pid_map, finished_task, dep_map[finished_task.name])
-        loop(pid_map, dep_map)
+        loop(pid_map, dep_map, finished_tasks)
 
       {:init_complete} ->
         for pid <- Map.values(pid_map), do: send(pid, {:execute})
-        loop(pid_map, dep_map)
+        loop(pid_map, dep_map, finished_tasks)
+
+      {:put, pid, task} ->
+        new_dep_map = update_dep_map(dep_map, task.name, task.unfinished_parents)
+        loop(Map.put(pid_map, task.name, pid), new_dep_map, finished_tasks)
+
+      {:task_finished, finished_task} ->
+        notify_children(pid_map, finished_task, dep_map[finished_task.name])
+        new_finished_tasks = finished_tasks ++ [finished_task]
+
+        if all_tasks_finished?(new_finished_tasks, pid_map) do
+          {:ok, new_finished_tasks}
+        else
+          loop(pid_map, dep_map, new_finished_tasks)
+        end
     end
   end
 
@@ -30,6 +36,10 @@ defmodule JobProcessor.TaskManager do
   defp create_tasks([head | tail]) do
     MyTask.new(self(), head)
     create_tasks(tail)
+  end
+
+  defp all_tasks_finished?(finished_tasks, pid_map) do
+    length(finished_tasks) == length(Map.values(pid_map))
   end
 
   defp update_dep_map(dep_map, _child_name, nil), do: dep_map

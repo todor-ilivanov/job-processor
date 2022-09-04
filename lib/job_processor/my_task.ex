@@ -35,7 +35,6 @@ defmodule JobProcessor.MyTask do
   end
 
   defp execute(manager_pid, task) when length(task.unfinished_parents) == 0 do
-    IO.inspect(%{name: task.name, command: task.command})
     send(manager_pid, {:task_finished, task})
     send(self(), {:stop})
   end
