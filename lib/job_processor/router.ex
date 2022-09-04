@@ -18,8 +18,14 @@ defmodule JobProcessor.Router do
   end
 
   post "/process" do
-    IO.inspect(conn.body_params)
-    send_resp(conn, 200, Jason.encode!(conn.body_params))
+    try do
+      processed = JobProcessor.process(conn.body_params["tasks"])
+      send_resp(conn, 200, Jason.encode!(processed))
+    rescue
+      e in _ ->
+        IO.inspect(e)
+        send_resp(conn, 400, "Bad request")
+    end
   end
 
   match _ do
