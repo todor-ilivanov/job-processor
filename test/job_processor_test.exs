@@ -62,6 +62,27 @@ defmodule JobProcessorTest.Router do
     assert_process_endpoint_successful(req_body, expected_resp)
   end
 
+  test "/process returns chained commands" do
+    req_body = %{
+      "tasks" => [
+        %{"command" => "touch /tmp/file1", "name" => "task-1"},
+        %{
+          "command" => "cat /tmp/file1",
+          "name" => "task-2",
+          "requires" => ["task-1"]
+        }
+      ]
+    }
+
+    expected_resp = "touch /tmp/file1 && cat /tmp/file1"
+
+    conn = conn(:post, "/process?chained=true", req_body)
+    conn = JobProcessor.Router.call(conn, @opts)
+    assert conn.state == :sent
+    assert conn.status == 200
+    assert conn.resp_body == Jason.encode!(expected_resp)
+  end
+
   test "/process returns error on missing body" do
     conn = conn(:post, "/process")
 

@@ -19,15 +19,15 @@ defmodule JobProcessor.Router do
   end
 
   post "/process" do
+    chained = conn.query_params["chained"] == "true"
     processed = JobProcessor.process(conn.body_params["tasks"])
-    send_resp(conn, 200, Jason.encode!(processed))
-  end
 
-  post "/process-short" do
     processed =
-      JobProcessor.process(conn.body_params["tasks"])
-      |> Enum.map(fn task -> task.command end)
-      |> Enum.join(" && ")
+      if chained do
+        processed |> Enum.map(fn task -> task.command end) |> Enum.join(" && ")
+      else
+        processed
+      end
 
     send_resp(conn, 200, Jason.encode!(processed))
   end
@@ -37,7 +37,10 @@ defmodule JobProcessor.Router do
   end
 
   @impl Plug.ErrorHandler
-  def handle_errors(conn, %{kind: _kind, reason: _reason, stack: _stack}) do
-    send_resp(conn, conn.status, "Something went wrong")
+  def handle_errors(conn, %{kind: _kind, reason: reason, stack: _stack}) do
+    message = if reason.message != nil, do: reason.message, else: "Something went wrong"
+    status_code = if reason.status_code != nil, do: reason.status_code, else: conn.status
+    IO.inspect(conn.status)
+    send_resp(conn, status_code, message)
   end
 end
