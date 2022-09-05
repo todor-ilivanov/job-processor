@@ -80,7 +80,7 @@ defmodule JobProcessorTest.Router do
     conn = JobProcessor.Router.call(conn, @opts)
     assert conn.state == :sent
     assert conn.status == 200
-    assert conn.resp_body == Jason.encode!(expected_resp)
+    assert conn.resp_body == expected_resp
   end
 
   test "/process returns error on missing body" do

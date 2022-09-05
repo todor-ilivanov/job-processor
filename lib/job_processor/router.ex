@@ -26,10 +26,10 @@ defmodule JobProcessor.Router do
       if chained do
         processed |> Enum.map(fn task -> task.command end) |> Enum.join(" && ")
       else
-        processed
+        Jason.encode!(processed)
       end
 
-    send_resp(conn, 200, Jason.encode!(processed))
+    send_resp(conn, 200, processed)
   end
 
   match _ do
