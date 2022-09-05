@@ -86,16 +86,22 @@ defmodule JobProcessorTest.Router do
   test "/process returns error on missing body" do
     conn = conn(:post, "/process")
 
-    assert_raise Plug.Conn.WrapperError, "** (RuntimeError) No tasks provided.", fn ->
+    assert_raise Plug.Conn.WrapperError, fn ->
       conn = JobProcessor.Router.call(conn, @opts)
+      assert conn.state == :sent
+      conn.status == 400
+      assert conn.resp_body == "No tasks provided. Please check the request format."
     end
   end
 
   test "/process returns error on malformed request" do
     conn = conn(:post, "/process", %{dogs: ["small", "medium", "large"]})
 
-    assert_raise Plug.Conn.WrapperError, "** (RuntimeError) No tasks provided.", fn ->
+    assert_raise Plug.Conn.WrapperError, fn ->
       conn = JobProcessor.Router.call(conn, @opts)
+      assert conn.state == :sent
+      conn.status == 400
+      assert conn.resp_body == "No tasks provided. Please check the request format."
     end
   end
 
