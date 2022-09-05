@@ -1,5 +1,9 @@
 alias JobProcessor.MyTask, as: MyTask
 
+defmodule CircularDependencyError do
+  defexception message: "Circular dependency found.", status_code: 400
+end
+
 defmodule JobProcessor.TaskManager do
   def async do
     Task.async(fn -> loop(%{}, %{}, []) end)
@@ -46,12 +50,28 @@ defmodule JobProcessor.TaskManager do
   defp update_dep_map(dep_map, _child_name, []), do: dep_map
 
   defp update_dep_map(dep_map, child_name, [head | tail]) do
+    if check_for_circular_dep(dep_map[child_name], head) do
+      raise CircularDependencyError,
+        message: "Circular dependency found between #{child_name} and #{head}."
+    end
+
     {_old_value, new_dep_map} =
       Map.get_and_update(dep_map, head, fn current_value ->
         {current_value, [child_name | current_value]}
       end)
 
     update_dep_map(new_dep_map, child_name, tail)
+  end
+
+  defp check_for_circular_dep([], _parent_name), do: false
+  defp check_for_circular_dep(nil, _parent_name), do: false
+
+  defp check_for_circular_dep([head | tail], parent_name) do
+    if head == parent_name do
+      true
+    else
+      check_for_circular_dep(tail, parent_name)
+    end
   end
 
   defp notify_children(_pid_map, _task, nil), do: :ok

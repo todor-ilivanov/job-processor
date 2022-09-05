@@ -94,6 +94,24 @@ defmodule JobProcessorTest.Router do
     end
   end
 
+  test "/process returns error if a circular dependency is found" do
+    req_body = %{
+      "tasks" => [
+        %{"command" => "touch /tmp/file1", "name" => "task-1", "requires" => ["task-2"]},
+        %{"command" => "cat /tmp/file1", "name" => "task-2", "requires" => ["task-1"]}
+      ]
+    }
+
+    conn = conn(:post, "/process", req_body)
+
+    assert_raise Plug.Conn.WrapperError, fn ->
+      conn = JobProcessor.Router.call(conn, @opts)
+      assert conn.state == :sent
+      conn.status == 400
+      assert conn.resp_body == "Circular dependency found between task-2 and task-1."
+    end
+  end
+
   test "/process returns error on malformed request" do
     conn = conn(:post, "/process", %{dogs: ["small", "medium", "large"]})
 
