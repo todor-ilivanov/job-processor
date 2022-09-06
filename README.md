@@ -25,7 +25,7 @@ curl -X POST https://joprocessor.fly.dev/process?chained=true
 The workflow is as follows:
 ### 1. `TaskManager` module
    - Responsible for creating tasks (each represented as a process), keeping a mapping of `task_name => pid`
-   - Also maintains a map of dependencies, e.g. `task-3 => [task-2, task-4]`, meaning `task-3` finish before `task-2` and `task-4`
+   - Also maintains a map of dependencies, e.g. `task-3 => [task-2, task-4]`, meaning `task-3` must finish before `task-2` and `task-4` can start
    - Gets notified by each task that's finished, then notifies all dependants
    - stores each finished task to a list that will be the final result
   
